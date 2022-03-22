@@ -1,14 +1,14 @@
 import os
 import argparse 
+import concurrent.futures
+import time
 
+start = time.perf_counter()
 
-
-
-
-parser = argparse.ArgumentParser(prog="WGS.py", formatter_class=argparse.RawTextHelpFormatter, description="""
+parser = argparse.ArgumentParser(prog="WGS_multi.py", formatter_class=argparse.RawTextHelpFormatter, description="""
 WGS_pipeline is an automated pipeline for Microbial Sequence assembly\n""",epilog="""
     Examples:
-    python3 WGS.py -i input_folder""")
+    python3 WGS_multi.py -i input_folder""")
 
 
 parser.add_argument("-i", "--input", type=str, default="", required=True, help="input folder directory")
@@ -52,7 +52,7 @@ class WGSpipeline:
 
 	def fastqc(self):
 		print("🄶🄴🄽🄴🅁🄰🅃🄸🄽🄶 🅀🄲 🅁🄴🄿🄾🅁🅃....")		
-		fqc = "/home/ahmed/lssd_home/FastQC/fastqc -o {foldr}/{sample}/fastqc_report -t 2 {foldr}/{sample}/{sample}*.fastq".format(foldr = self.foldr, sample = self.sample)
+		fqc = "/home/ahmed/lssd_home/FastQC/fastqc -o {foldr}/{sample}/fastqc_report -t 2 {foldr}/{sample}/{sample}_R*.fastq".format(foldr = self.foldr, sample = self.sample)
 		os.system(fqc)
 		
 	
@@ -72,7 +72,7 @@ class WGSpipeline:
 
 	def annotate(self):
 		print("🄰🄽🄽🄾🅃🄰🅃🄸🄽🄶")
-		annotation = "/home/ahmed/My_tools/prokka-master/bin/prokka --outdir {foldr}/{sample}/prokka --prefix {sample} {foldr}/{sample}/assembly/contigs.fasta".format(foldr = self.foldr, sample = self.sample)
+		annotation = "/home/ahmed/My_tools/prokka-master/bin/prokka --outdir {foldr}/{sample}/prokka --cpus 12 --prefix {sample} {foldr}/{sample}/assembly/contigs.fasta".format(foldr = self.foldr, sample = self.sample)
 		os.system(annotation)
 
 	def assessment(self):
@@ -82,16 +82,25 @@ class WGSpipeline:
 			 --gene-thresholds 1,1000 {foldr}/{sample}/assembly/contigs.fasta --glimmer".format(foldr = self.foldr, sample = self.sample)
 		os.system(assess)
 
+def pipeline(sample_id):
+	pipe = WGSpipeline(args.input, sample_id)
+	pipe.unzip()	
+	pipe.mkdr()	
+	pipe.fastqc()
+	pipe.trimmer_fastp()
+	pipe.assembly()
+	pipe.annotate()
+	pipe.assessment()
 
-for sample_id in folders:
-	
-	pipeline = WGSpipeline(args.input, sample_id)
-	pipeline.unzip()
-	pipeline.mkdr()
-	pipeline.fastqc()
-	pipeline.trimmer_fastp()
-	pipeline.assembly()
-	pipeline.annotate()
-	pipeline.assessment()
+
+with concurrent.futures.ThreadPoolExecutor(max_workers = 12) as executor:
+	run_pipeline = [executor.submit(pipeline, sample_id) for sample_id in folders]
+
+	for f in concurrent.futures.as_completed(run_pipeline):
+		print(f.result())
 
 os.system("rm -r files.txt")
+
+finish = time.perf_counter()
+total_time = start - finish
+print(f"Finished in {total_time}")
