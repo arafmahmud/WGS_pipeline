@@ -65,7 +65,7 @@ class WGSpipeline:
 
 	def assembly(self):
 		print("🄰🅂🅂🄴🄼🄱🄻🅈")
-		assemble = "spades -k 21,33,55,77 --careful --pe1-1 {foldr}/{sample}/trimmed/{sample}_R1.fastq \
+		assemble = "spades -k 21,33,55,77,87,99,111,119,127 --careful --pe1-1 {foldr}/{sample}/trimmed/{sample}_R1.fastq \
 				 --pe1-2 {foldr}/{sample}/trimmed/{sample}_R2.fastq -o {foldr}/{sample}/assembly -t 12".format(foldr = self.foldr, sample = self.sample)
 		os.system(assemble)
 
